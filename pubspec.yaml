@@ -1,0 +1,16 @@
+name: analysis_server_utils
+description: Start and communicate with a local Dart analysis server.
+version: 0.0.0-a1
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  path: ^1.8.0
+  intl: ^0.18.0
+
+dev_dependencies:
+  enspyr_lints:
+    git: https://github.com/enspyrco/enspyr_lints
+  test: ^1.24.0
