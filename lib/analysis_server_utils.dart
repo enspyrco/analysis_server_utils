@@ -1,8 +1,8 @@
-/// Support for doing something awesome.
+/// analysis_server_utils
 ///
-/// More dartdocs go here.
+/// Configure and start the Dart SDK's analysis server.
+/// TODO: Add a summary
 library;
 
 export 'src/analysis_server.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/analysis_server_config.dart';
