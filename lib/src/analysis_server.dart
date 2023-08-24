@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:analysis_server_utils/src/analysis_server_config.dart';
+import 'package:logging/logging.dart';
 
 /// TODO: document
 class AnalysisServer {
@@ -27,11 +29,12 @@ class AnalysisServer {
   StreamSubscription<String>? _stderrSubscription;
 
   Future<void> start() async {
-    print('process: ${_config.vmPath}');
-    print('args: ${_config.processArgs}');
+    log('Spawning: ${_config.vmPath} with args ${_config.processArgs}',
+        level: Level.INFO.value);
     _process = await Process.start(_config.vmPath, _config.processArgs);
     _process?.exitCode.then((code) {
-      print('analysis_server process exited with: $code');
+      log('analysis_server process exited with: $code',
+          level: Level.INFO.value);
       processCompleter.complete(code);
     });
 
@@ -39,14 +42,16 @@ class AnalysisServer {
         _process?.stdout.transform(utf8.decoder).listen((data) {
       _onReceive.add(data);
     }, onError: (error) {
-      print('The stdout *stream* produced an error: $error');
+      log('The stdout *stream* produced an error: $error',
+          level: Level.SHOUT.value);
     });
 
     _stderrSubscription =
         _process?.stderr.transform(utf8.decoder).listen((data) {
-      print('stderr received: $data');
+      log('stderr received: $data', level: Level.SEVERE.value);
     }, onError: (error) {
-      print('The stderr *stream* produced an error: $error');
+      log('The stderr *stream* produced an error: $error',
+          level: Level.SHOUT.value);
     });
   }
 
