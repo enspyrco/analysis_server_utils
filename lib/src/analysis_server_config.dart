@@ -27,10 +27,10 @@ class AnalysisServerConfig {
     // we use the path of the snapshot to check that sdk path is valid
     scriptPath ??= '$sdkPath/bin/snapshots/analysis_server.dart.snapshot';
     if (!File(scriptPath).existsSync()) {
-      throw 'The analysis_server was not found at $scriptPath\n'
-          'Try explicitly setting the Dart SDK path by adding an `AnalysisServerConfig` parameter with the `sdkPath` set, eg:\n\n'
-          'AnalysisServer server = AnalysisServer('
-          '  config: AnalysisServerConfig(sdkPath: \'a_valid_path\'),'
+      throw 'It seems we are looking in the wrong place for the analysis_server.\n'
+          'The SDK path used was $sdkPath\n'
+          'You can try explicitly setting the Dart SDK path by adding an `AnalysisServerConfig` parameter with the `sdkPath` set, eg:\n\n'
+          'AnalysisServer server = AnalysisServer(..., config: AnalysisServerConfig(sdkPath: \'a_valid_path\'),'
           ');';
     }
 
