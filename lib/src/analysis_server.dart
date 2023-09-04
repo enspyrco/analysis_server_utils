@@ -85,9 +85,9 @@ class AnalysisServer {
     _process!.stdin.add(utf8EncodedBody);
   }
 
-  void dispose() {
-    _stdoutSubscription?.cancel();
-    _stderrSubscription?.cancel();
+  Future<void> dispose() async {
+    await _stdoutSubscription?.cancel();
+    await _stderrSubscription?.cancel();
     _process?.kill();
   }
 }
