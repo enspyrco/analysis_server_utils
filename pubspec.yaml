@@ -8,6 +8,7 @@ environment:
   sdk: ^3.0.0
 
 dependencies:
+  stream_channel: ^2.1.1
   path: ^1.8.0
   intl: ^0.18.0
   logging: ^1.2.0

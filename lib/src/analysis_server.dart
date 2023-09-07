@@ -4,9 +4,19 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:analysis_server_utils/src/analysis_server_config.dart';
+import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
+import 'package:lsp_models/lsp_models.dart';
+import 'package:path/path.dart';
+import 'package:stream_channel/stream_channel.dart';
 
-/// TODO: document
+/// The [AnalysisServer] starts the analysis_server process and provides a
+/// [StreamChannel] that can be used by other objects to communicate with the
+/// running process.
+///
+/// Input to (and output from) the [StreamChannel] must be a UInt8List message
+/// with a header and a content part, separated by a ‘\r\n’, where the header is
+/// ascii encoded and the body is utf8 encoded. See: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#baseProtocol
 class AnalysisServer {
   AnalysisServer({
     AnalysisServerConfig? config,
@@ -16,19 +26,14 @@ class AnalysisServer {
 
   late final AnalysisServerConfig _config;
 
-  final StreamController<String> _onSend = StreamController.broadcast();
-  final StreamController<String> _onReceive = StreamController.broadcast();
+  final StreamChannelController<List<int>> _streamChannelController =
+      StreamChannelController(allowForeignErrors: false);
 
-  int id = 1;
   Process? _process;
   final Completer<int> processCompleter = Completer<int>();
 
-  Stream<String> get onSend => _onSend.stream;
-  Stream<String> get onReceive => _onReceive.stream;
-  StreamSubscription<String>? _stdoutSubscription;
-  StreamSubscription<String>? _stderrSubscription;
-
   Future<void> start() async {
+    // Spawn the analysis_server process
     log('Spawning: ${_config.vmPath} with args ${_config.processArgs}',
         level: Level.INFO.value);
     _process = await Process.start(_config.vmPath, _config.processArgs);
@@ -38,37 +43,42 @@ class AnalysisServer {
       processCompleter.complete(code);
     });
 
-    _stdoutSubscription =
-        _process?.stdout.transform(utf8.decoder).listen((data) {
-      _onReceive.add(data);
-    }, onError: (error) {
-      log('The stdout *stream* produced an error: $error',
-          level: Level.SHOUT.value);
-    });
+    // Pipe all events from stdout into the local sink...
+    _process!.stdout.pipe(_streamChannelController.local.sink);
 
-    _stderrSubscription =
-        _process?.stderr.transform(utf8.decoder).listen((data) {
-      log('stderr received: $data', level: Level.SEVERE.value);
-    }, onError: (error) {
-      log('The stderr *stream* produced an error: $error',
-          level: Level.SHOUT.value);
-    });
+    // ... and all events from the local stream into stdin
+    _streamChannelController.local.stream
+        .listen(_process!.stdin.add, onDone: _process!.stdin.close);
   }
 
-  /// Call a server method by wrapping and sending the passed RPC params,
-  /// prefixed with the required LSP headers.
-  void call(
-      {required String method, required Map<String, Object?> params, int? id}) {
-    Map<String, Object?> bodyJson = {
-      'jsonrpc': '2.0',
-      'method': method,
-      'params': params,
-      'id': id ?? this.id++,
-    };
-
+  void initialize() {
     if (_process == null) {
       throw 'AnlysisServer _process was null, did you start the server?';
     }
+
+    final initializeParams = InitializeParams(
+      processId: pid,
+      rootUri: Directory.current.uri,
+      capabilities: ClientCapabilities(),
+      initializationOptions: {},
+      trace: const TraceValues.fromJson('verbose'),
+      workspaceFolders: [
+        WorkspaceFolder(
+          name: basename(Directory.current.path),
+          uri: Directory.current.uri,
+        )
+      ],
+      clientInfo:
+          InitializeParamsClientInfo(name: 'enspyr.co', version: '0.0.1'),
+      locale: Intl.getCurrentLocale(),
+    );
+
+    Map<String, Object?> bodyJson = {
+      'jsonrpc': '2.0',
+      'method': 'initialize',
+      'params': initializeParams.toJson(),
+      'id': 0,
+    };
 
     // Encode header as ascii & body as utf8, as per LSP spec.
     final jsonEncodedBody = jsonEncode(bodyJson);
@@ -77,17 +87,16 @@ class AnalysisServer {
         'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n';
     final asciiEncodedHeader = ascii.encode(header);
 
-    // Emit what is being sent, for any listeners of the onSend stream
-    _onSend.add(jsonEncodedBody);
-
     // Send the message to the analysis_server process via its stdin
     _process!.stdin.add(asciiEncodedHeader);
     _process!.stdin.add(utf8EncodedBody);
   }
 
+  /// Return the foreign [StreamChannel] for users of the [AnalysisServer].
+  StreamChannel<List<int>> get streamChannel =>
+      _streamChannelController.foreign;
+
   Future<void> dispose() async {
-    await _stdoutSubscription?.cancel();
-    await _stderrSubscription?.cancel();
     _process?.kill();
   }
 }
