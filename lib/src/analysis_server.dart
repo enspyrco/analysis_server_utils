@@ -51,6 +51,8 @@ class AnalysisServer {
         .listen(_process!.stdin.add, onDone: _process!.stdin.close);
   }
 
+  /// The id is the method is given by the AnalysisProcess.initialize enum index
+  /// so that the response can be identified in the analysis_client
   void initialize() {
     if (_process == null) {
       throw 'AnlysisServer _process was null, did you start the server?';
@@ -77,7 +79,7 @@ class AnalysisServer {
       'jsonrpc': '2.0',
       'method': 'initialize',
       'params': initializeParams.toJson(),
-      'id': 0,
+      'id': AnalysisProcess.initialize.index,
     };
 
     // Encode header as ascii & body as utf8, as per LSP spec.

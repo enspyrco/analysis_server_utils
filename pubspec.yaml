@@ -13,7 +13,7 @@ dependencies:
   intl: ^0.18.0
   logging: ^1.2.0
   lsp_models:
-    git: https://github.com/enspyrco/lsp_models.git
+    git: https://github.com/enspyrco/lsp_models
 
 dev_dependencies:
   enspyr_lints:
