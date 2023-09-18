@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:analysis_server_utils/src/analysis_server_config.dart';
 import 'package:logging/logging.dart';
 import 'package:lsp_models/lsp_models.dart';
 import 'package:stream_channel/stream_channel.dart';
+
+import '../analysis_server_utils.dart';
 
 /// The [AnalysisServer] starts the analysis_server process and provides a
 /// [StreamChannel] that can be used by other objects to communicate with the
@@ -30,8 +31,11 @@ class AnalysisServer {
   Process? _process;
   final Completer<int> processCompleter = Completer<int>();
 
+  /// Kill any already running process then start an analysis_server process
+  /// and connect the StreamChannelController.
   Future<void> start() async {
-    // Spawn the analysis_server process
+    await dispose();
+
     log('Spawning: ${_config.vmPath} with args ${_config.processArgs}',
         level: Level.INFO.value);
     _process = await Process.start(_config.vmPath, _config.processArgs);
