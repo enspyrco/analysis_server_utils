@@ -4,10 +4,8 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:analysis_server_utils/src/analysis_server_config.dart';
-import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:lsp_models/lsp_models.dart';
-import 'package:path/path.dart';
 import 'package:stream_channel/stream_channel.dart';
 
 /// The [AnalysisServer] starts the analysis_server process and provides a
@@ -53,32 +51,20 @@ class AnalysisServer {
 
   /// The id is the method is given by the AnalysisProcess.initialize enum index
   /// so that the response can be identified in the analysis_client
-  void initialize() {
+  void initialize({required Map<String, Object?> paramsJson}) {
     if (_process == null) {
       throw 'AnlysisServer _process was null, did you start the server?';
     }
 
-    final initializeParams = InitializeParams(
-      processId: pid,
-      rootUri: Directory.current.uri,
-      capabilities: ClientCapabilities(),
-      initializationOptions: {},
-      trace: const TraceValues.fromJson('verbose'),
-      workspaceFolders: [
-        WorkspaceFolder(
-          name: basename(Directory.current.path),
-          uri: Directory.current.uri,
-        )
-      ],
-      clientInfo:
-          InitializeParamsClientInfo(name: 'enspyr.co', version: '0.0.1'),
-      locale: Intl.getCurrentLocale(),
-    );
+    // When the lsp_client and analysis_server_utils are running in separate
+    // processses (eg. communicating over websockets) we need to set the pid
+    // here.
+    paramsJson['processId'] ??= pid;
 
     Map<String, Object?> bodyJson = {
       'jsonrpc': '2.0',
       'method': 'initialize',
-      'params': initializeParams.toJson(),
+      'params': paramsJson,
       'id': AnalysisProcess.initialize.index,
     };
 
